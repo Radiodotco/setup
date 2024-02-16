@@ -5,6 +5,7 @@ set -eu
 REDASH_BASE_PATH=/opt/redash
 
 install_docker() {
+  echo "Installing Docker..."
   # Install Docker
   export DEBIAN_FRONTEND=noninteractive
   sudo apt-get -qqy update
@@ -27,6 +28,7 @@ install_docker() {
 }
 
 create_directories() {
+  echo "Creating Redash Directories..."
   if [ ! -e "$REDASH_BASE_PATH" ]; then
     sudo mkdir -p "$REDASH_BASE_PATH"
     sudo chown "$USER:" "$REDASH_BASE_PATH"
@@ -38,6 +40,7 @@ create_directories() {
 }
 
 create_config() {
+  echo "Creating Config File..."
   if [ -e "$REDASH_BASE_PATH"/env ]; then
     rm "$REDASH_BASE_PATH"/env
     touch "$REDASH_BASE_PATH"/env
@@ -56,22 +59,21 @@ POSTGRES_PASSWORD=$POSTGRES_PASSWORD
 REDASH_COOKIE_SECRET=$COOKIE_SECRET
 REDASH_SECRET_KEY=$SECRET_KEY
 REDASH_DATABASE_URL=$REDASH_DATABASE_URL
+REDASH_RATELIMIT_ENABLED=false
 EOF
 }
 
 setup_compose() {
-  REQUESTED_CHANNEL=stable
-  LATEST_VERSION=$(curl -s "https://version.redash.io/api/releases?channel=$REQUESTED_CHANNEL" | json_pp | grep "docker_image" | head -n 1 | awk 'BEGIN{FS=":"}{print $3}' | awk 'BEGIN{FS="\""}{print $1}')
-
+  echo "Setting up Docker Compose..."
+  cp /tmp/docker-compose.yml $REDASH_BASE_PATH
   cd "$REDASH_BASE_PATH"
-  GIT_BRANCH="${REDASH_BRANCH:-master}" # Default branch/version to master if not specified in REDASH_BRANCH env var
-  curl -OL https://raw.githubusercontent.com/getredash/setup/"$GIT_BRANCH"/data/docker-compose.yml
-  sed -ri "s/image: redash\/redash:([A-Za-z0-9.-]*)/image: redash\/redash:$LATEST_VERSION/" docker-compose.yml
   echo "export COMPOSE_PROJECT_NAME=redash" >>~/.profile
-  echo "export COMPOSE_FILE=$REDASH_BASE_PATH/docker-compose.yml" >>~/.profile
+  echo "export COMPOSE_FILE=/$REDASH_BASE_PATH/docker-compose.yml" >>~/.profile
   export COMPOSE_PROJECT_NAME=redash
-  export COMPOSE_FILE="$REDASH_BASE_PATH"/docker-compose.yml
+  export COMPOSE_FILE=/$REDASH_BASE_PATH/docker-compose.yml
+  echo "Provisioning Redash Database..."
   sudo docker-compose run --rm server create_db
+  echo "Starting Redash..."
   sudo docker-compose up -d
 }
 

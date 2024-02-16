@@ -16,3 +16,6 @@ rm -f /root/.ssh/authorized_keys /etc/ssh/*key*
 # dd if=/dev/zero of=/zerofile; sync; rm /zerofile; sync
 cat /dev/null >/var/log/lastlog
 cat /dev/null >/var/log/wtmp
+cat /dev/null >/var/log/alternatives.log
+cat /dev/null >/var/log/auth.log
+cat /dev/null >/var/log/ubuntu-advantage.log

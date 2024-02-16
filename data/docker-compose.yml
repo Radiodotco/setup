@@ -1,9 +1,11 @@
 version: "2"
 x-redash-service: &redash-service
-  image: redash/redash:8.0.0.b32245
+  image: redash/redash:preview
   depends_on:
-    - postgres
-    - redis
+    redis:
+      condition: service_healthy
+    postgres:
+      condition: service_healthy
   env_file: /opt/redash/env
   restart: always
 services:
@@ -17,9 +19,6 @@ services:
   scheduler:
     <<: *redash-service
     command: scheduler
-    environment:
-      QUEUES: "celery"
-      WORKERS_COUNT: 1
   scheduled_worker:
     <<: *redash-service
     command: worker
@@ -35,12 +34,22 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
+    healthcheck:
+      test: redis-cli -h 127.0.0.1 ping | grep -q PONG
+      interval: 10s
+      timeout: 5s
+      retries: 5
   postgres:
-    image: pgautoupgrade/pgautoupgrade:15-alpine3.8
+    image: postgres:13-alpine
     env_file: /opt/redash/env
     volumes:
       - /opt/redash/postgres-data:/var/lib/postgresql/data
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
   nginx:
     image: redash/nginx:latest
     ports:
@@ -50,3 +59,9 @@ services:
     links:
       - server:redash
     restart: always
+  worker:
+    <<: *redash-service
+    command: worker
+    environment:
+      QUEUES: "periodic emails default"
+      WORKERS_COUNT: 1
