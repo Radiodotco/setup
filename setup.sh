@@ -77,7 +77,17 @@ setup_compose() {
   sudo docker-compose up -d
 }
 
+create_crontab() {
+cat >/etc/cron.daily/log_cleanup <<EOF
+#!/bin/sh
+rm -rf /var/log/.gz;
+sudo journalctl --rotate;
+sudo journalctl --vacuum-time=1hour;
+EOF
+chmod +x /etc/cron.daily/log_cleanup
+}
 install_docker
 create_directories
 create_config
 setup_compose
+create_crontab
